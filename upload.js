@@ -21,19 +21,23 @@ function uploadFile(prefix) {
     return function(req, res, next) {
         uploadSingle(req, res, function(err) {    
             if (err) {
+		console.log('there was an error', err)
                 err.Error = err.message
                 res.writeHead(500, err)
                 res.end()
             } else {    
-                console.log(req);            
+                //console.log(req);            
                 if (req.file) {
                     // we got an upload, now move the file
                     console.log("got a file");
-                    rename(prefix, req, res, next)    
-                } else {
+                    //rename(prefix, req, res, next)    
+                    console.log("next1")
+		    next()	
+		} else {
                     // if there's no file then proceed
                     console.log("there is no file")
-                    next()
+	            console.log("next2")                    
+		    next()
                 }                
             }
         })
@@ -42,9 +46,11 @@ function uploadFile(prefix) {
 
 // move files from uploads directory to per-user location
 function rename(prefix, req, res, next) {    
-    if (!req.user) {
+/*    
+if (!req.user) {
         return res.sendStatus(401) // unauthorized
     }
+*/
 
     if (!prefix) {
         prefix = 'upload'

@@ -1,39 +1,58 @@
 var express    = require('express');        
 var app        = express();                 
-// var AWS = require('aws-sdk'); 
 var upload = require('./upload.js');
+var spawn = require('child_process').spawn;
+var child;
 var uploadFile = upload.uploadFile;
 var response; 
 
+var sys = require('sys')
+var exec = require('child_process').exec;
+var child;
 var Bing = require('node-bing-api')({ accKey: "fJa9Rz0oU9/2O+Nq6tL9wZN8EZPhqf7lWO72SFTzom4" });
 
-var port = process.env.PORT || 8080;        // set our port
+var port = 8080;        // set our port
 
-
-
-// var s3 = new AWS.S3(); 
-
-//  s3.createBucket({Bucket: 'myBucket'}, function() {
-
-//   var params = {Bucket: 'myBucket', Key: 'myKey', Body: 'Hello!'};
-
-//   s3.putObject(params, function(err, data) {
-
-//       if (err) {     
-//           console.log(err)     
-//       } else {
-//       	console.log("Successfully uploaded data to myBucket/myKey");   
-//       }
-
-//    });
-
-// });
 
 function postImage(req, res) {
-	var imgUrl = req.fileurl;
+
+	var imgUrl = req["file"]["path"]
+	var img_content;
 
 	console.log("image url is", imgUrl);
-	res.send({result: "success"});
+	
+//get words from the image
+	var command = "python python/pytesseract.py -f /home/ec2-user/hackrice2016/"+imgUrl+" -t /usr/local/bin/tesseract"
+	
+	console.log("command "+command)
+
+	child = exec(command, function(error, stdout, stderr) {
+		sys.print('stdout: '+stdout);
+		sys.print('stderr: '+stderr);
+		//setTimeout(function() {
+		console.log("waiting to print");
+		img_content = stdout
+		console.log(error)
+		if (error !== null) {
+			console.log('exec');
+		}
+
+		console.log(img_content);
+		//get image url
+		if (img_content){
+			Bing.images(img_content, {skip: 50}, function(error, result, body) {
+				if (typeof body["d"]["results"][0] !== "undefined") {
+					response = body["d"]["results"][0]["MediaUrl"].toString();
+					console.log(response);
+					res.send({result:"success", imageUrl: response});
+				} else {
+					res.send({result:"error", imageUrl: null});
+				}
+			});
+		} else {
+			console.log("no img content received")
+		}
+	}); // end of exec()
 }
 
 function getSample(req, res) {
@@ -43,14 +62,8 @@ function getSample(req, res) {
 
 app.get('/sample', getSample);
 
-app.get('/:keyword', function(req, res) {   
-	Bing.images(req.params.keyword, {skip: 50}, function(error, res, body){
-  		response = body["d"]["results"][0]["MediaUrl"].toString();
-  		console.log(response);
-	});
-	res.json({ "message": response });   
-});
 
+app.get('/test', postImage)
 app.post('/image', uploadFile('post'), postImage);
 
 
